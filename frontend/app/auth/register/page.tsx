@@ -25,7 +25,7 @@ export default function RegisterPage() {
     startTransition(() => {
       void register(form.name, form.email, form.password)
         .then(() => {
-          router.push("/profile");
+          router.push("/auth/login");
         })
         .catch((submitError) => {
           setError(submitError instanceof Error ? submitError.message : "Registration failed.");

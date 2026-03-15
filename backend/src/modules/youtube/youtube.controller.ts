@@ -14,7 +14,7 @@ import {
 } from "./youtube.service";
 
 const searchQuerySchema = z.object({
-  tech: z.string().trim().min(2).max(80),
+  tech: z.string().trim().min(1).max(80),
   sortBy: z.union([z.string(), z.array(z.string())]).optional()
 });
 
