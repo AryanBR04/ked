@@ -12,7 +12,8 @@ export async function publicApiFetch<T>(path: string, init?: RequestInit): Promi
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.message ?? `Request failed with status ${response.status}`);
   }
 
   return response.json() as Promise<T>;
@@ -60,3 +61,21 @@ export async function apiFetchWithAuth<T>(path: string, init?: ApiRequestOptions
   return response.json() as Promise<T>;
 }
 
+export async function apiFetchMaybeAuth<T>(path: string, init?: ApiRequestOptions): Promise<T> {
+  const store = useAuthStore.getState();
+
+  if (!store.isBootstrapped && !store.isRefreshing) {
+    await store.bootstrapSession();
+  }
+
+  const token = init?.accessToken ?? useAuthStore.getState().accessToken;
+
+  if (token) {
+    return apiFetchWithAuth<T>(path, {
+      ...init,
+      accessToken: token
+    });
+  }
+
+  return publicApiFetch<T>(path, init);
+}

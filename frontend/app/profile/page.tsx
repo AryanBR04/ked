@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/Auth/AuthGuard";
 import { Alert } from "@/components/common/Alert";
 import { Button } from "@/components/common/Button";
+import { YoutubeCourseCard } from "@/components/Youtube/YoutubeCourseCard";
 import { apiFetchWithAuth, publicApiFetch } from "@/lib/apiClient";
-import type { SubjectListItem, SubjectProgress } from "@/lib/types";
+import { ProgressBar } from "@/components/common/ProgressBar";
+import type { SubjectListItem, SubjectProgress, YoutubeCourseCollectionResponse } from "@/lib/types";
 import { useAuthStore } from "@/store/authStore";
 
 interface SubjectListResponse {
@@ -23,6 +25,7 @@ export default function ProfilePage() {
 function ProfileContent() {
   const user = useAuthStore((state) => state.user)!;
   const [progressCards, setProgressCards] = useState<Array<SubjectListItem & SubjectProgress>>([]);
+  const [continueLearning, setContinueLearning] = useState<YoutubeCourseCollectionResponse["items"]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,7 +33,10 @@ function ProfileContent() {
 
     async function load() {
       try {
-        const response = await publicApiFetch<SubjectListResponse>("/subjects?page=1&pageSize=20");
+        const [response, continueResponse] = await Promise.all([
+          publicApiFetch<SubjectListResponse>("/subjects?page=1&pageSize=20"),
+          apiFetchWithAuth<YoutubeCourseCollectionResponse>("/youtube/continue-learning?limit=6")
+        ]);
         const progress = await Promise.all(
           response.items.map(async (subject) => ({
             ...subject,
@@ -40,6 +46,7 @@ function ProfileContent() {
 
         if (!cancelled) {
           setProgressCards(progress);
+          setContinueLearning(continueResponse.items);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -63,6 +70,25 @@ function ProfileContent() {
         <p className="mt-2 text-ink/65">{user.email}</p>
       </section>
       {error ? <Alert title="Profile data unavailable" tone="error">{error}</Alert> : null}
+      {continueLearning.length ? (
+        <section className="space-y-4">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Continue learning</p>
+              <h2 className="mt-2 text-3xl font-semibold">Resume your YouTube playlists first</h2>
+            </div>
+          </div>
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {continueLearning.map((course) => (
+              <YoutubeCourseCard
+                key={`${course.playlist_id}-${course.technology}-profile`}
+                course={course}
+                actionLabel="Resume playlist"
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-3">
           <div>
@@ -77,9 +103,13 @@ function ProfileContent() {
                 {subject.percent_complete}% complete
               </p>
               <h3 className="mt-3 text-2xl font-semibold">{subject.title}</h3>
-              <p className="mt-3 text-sm text-ink/65">
-                {subject.completed_videos} of {subject.total_videos} lessons completed
-              </p>
+              <div className="mt-4 rounded-[1.4rem] border border-moss/10 bg-[#f6faf7] p-3">
+                <ProgressBar
+                  completed={subject.completed_videos}
+                  total={subject.total_videos}
+                  percent={subject.percent_complete}
+                />
+              </div>
               <div className="mt-5">
                 <Button
                   href={
@@ -98,4 +128,3 @@ function ProfileContent() {
     </div>
   );
 }
-

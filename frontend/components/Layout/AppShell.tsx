@@ -12,7 +12,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
-  const isCoursesActive = pathname === "/" || pathname.startsWith("/subjects");
+  const isCoursesActive = pathname === "/" || pathname.startsWith("/subjects") || pathname.startsWith("/course");
   const isProfileActive = pathname.startsWith("/profile");
 
   return (

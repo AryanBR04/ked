@@ -20,7 +20,9 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().default("http://localhost:3000"),
   COOKIE_DOMAIN: z.string().optional(),
   COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).default("lax"),
-  REFRESH_COOKIE_NAME: z.string().default("ked_refresh_token")
+  REFRESH_COOKIE_NAME: z.string().default("ked_refresh_token"),
+  YOUTUBE_API_KEY: z.string().optional(),
+  YOUTUBE_CACHE_HOURS: z.coerce.number().int().positive().default(12)
 });
 
 const parsed = envSchema.safeParse(process.env);

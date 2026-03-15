@@ -1,11 +1,20 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Alert } from "@/components/common/Alert";
 import { Button } from "@/components/common/Button";
-import { publicApiFetch } from "@/lib/apiClient";
-import type { SubjectListItem } from "@/lib/types";
+import { YoutubeCourseCard } from "@/components/Youtube/YoutubeCourseCard";
+import { YoutubeSearchSortFilter } from "@/components/Youtube/YoutubeSearchSortFilter";
+import { apiFetchMaybeAuth, publicApiFetch } from "@/lib/apiClient";
+import { TOP_TECHNOLOGIES } from "@/lib/technologyCatalog";
+import type {
+  SubjectListItem,
+  YoutubeCourseCollectionResponse,
+  YoutubeSearchResponse,
+  YoutubeTrendingResponse
+} from "@/lib/types";
+import { YOUTUBE_SORT_OPTIONS, type YoutubeSortKey } from "@/lib/youtubeSort";
 
 interface SubjectListResponse {
   items: SubjectListItem[];
@@ -20,35 +29,35 @@ interface SubjectListResponse {
 const learningFlow = [
   {
     step: "01",
-    title: "Pick a subject",
-    description: "Open a guided path in Java, Python, ML, or the next track you publish."
+    title: "Search a technology",
+    description: "Pick from 100 core technologies, including languages, frameworks, cloud, AI, and dev tools."
   },
   {
     step: "02",
-    title: "Move lesson by lesson",
-    description: "Each video unlocks in sequence, so students always know what comes next."
+    title: "Open a ranked playlist",
+    description: "The platform scores playlists by views, engagement, and recency before showing the top options."
   },
   {
     step: "03",
-    title: "Resume instantly",
-    description: "Playback position, completion state, and next lesson stay synced to the account."
+    title: "Resume like Netflix",
+    description: "Your current lesson, completed count, and resume point stay synced to your account."
   }
 ];
 
 const heroStats = [
   {
-    value: "12",
-    label: "Published courses",
+    value: "100",
+    label: "Core technologies indexed",
     tone: "light"
   },
   {
-    value: "Strict",
-    label: "Lesson ordering",
+    value: "Top 20",
+    label: "Playlists per search",
     tone: "soft"
   },
   {
-    value: "Resume",
-    label: "Watch state saved",
+    value: "12h",
+    label: "YouTube cache window",
     tone: "dark"
   }
 ] as const;
@@ -61,60 +70,210 @@ function courseInitials(title: string) {
     .join("");
 }
 
+function filterByPlaylistIds<T extends { playlist_id: string }>(items: T[], excluded: Set<string>) {
+  return items.filter((item) => !excluded.has(item.playlist_id));
+}
+
 export default function HomePage() {
   const [subjects, setSubjects] = useState<SubjectListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [subjectLoading, setSubjectLoading] = useState(true);
+  const [subjectError, setSubjectError] = useState<string | null>(null);
+  const [continueLearning, setContinueLearning] = useState<YoutubeCourseCollectionResponse["items"]>([]);
+  const [continueLoading, setContinueLoading] = useState(true);
+  const [continueError, setContinueError] = useState<string | null>(null);
+  const [trending, setTrending] = useState<YoutubeTrendingResponse["items"]>([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [trendingError, setTrendingError] = useState<string | null>(null);
+  const [recommended, setRecommended] = useState<YoutubeCourseCollectionResponse["items"]>([]);
+  const [recommendedLoading, setRecommendedLoading] = useState(true);
+  const [recommendedError, setRecommendedError] = useState<string | null>(null);
+  const [newCourses, setNewCourses] = useState<YoutubeCourseCollectionResponse["items"]>([]);
+  const [newCoursesLoading, setNewCoursesLoading] = useState(true);
+  const [newCoursesError, setNewCoursesError] = useState<string | null>(null);
+  const [searchValue, setSearchValue] = useState("Python");
+  const [selectedSorts, setSelectedSorts] = useState<YoutubeSortKey[]>([]);
+  const [searchResults, setSearchResults] = useState<YoutubeSearchResponse | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [isSearching, startSearchTransition] = useTransition();
+  const continuePlaylistIds = new Set(continueLearning.map((course) => course.playlist_id));
+  const visibleTrending = filterByPlaylistIds(trending, continuePlaylistIds);
+  const recommendedExcluded = new Set([
+    ...continuePlaylistIds,
+    ...visibleTrending.map((course) => course.playlist_id)
+  ]);
+  const visibleRecommended = filterByPlaylistIds(recommended, recommendedExcluded);
+  const newExcluded = new Set([
+    ...recommendedExcluded,
+    ...visibleRecommended.map((course) => course.playlist_id)
+  ]);
+  const visibleNewCourses = filterByPlaylistIds(newCourses, newExcluded);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
-      try {
-        const response = await publicApiFetch<SubjectListResponse>("/subjects?page=1&pageSize=12");
+    async function loadHomeData() {
+      const [subjectResult, continueResult, trendingResult, recommendedResult, newResult] = await Promise.allSettled([
+        publicApiFetch<SubjectListResponse>("/subjects?page=1&pageSize=12"),
+        apiFetchMaybeAuth<YoutubeCourseCollectionResponse>("/youtube/continue-learning?limit=4"),
+        apiFetchMaybeAuth<YoutubeTrendingResponse>("/youtube/trending?limit=8")
+        ,
+        apiFetchMaybeAuth<YoutubeCourseCollectionResponse>("/youtube/recommended?limit=4"),
+        apiFetchMaybeAuth<YoutubeCourseCollectionResponse>("/youtube/new?limit=4")
+      ]);
 
-        if (!cancelled) {
-          setSubjects(response.items);
-        }
-      } catch (loadError) {
-        if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : "Failed to load courses.");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+      if (cancelled) {
+        return;
       }
+
+      if (subjectResult.status === "fulfilled") {
+        setSubjects(subjectResult.value.items);
+      } else {
+        setSubjectError(subjectResult.reason instanceof Error ? subjectResult.reason.message : "Failed to load courses.");
+      }
+
+      if (continueResult.status === "fulfilled") {
+        setContinueLearning(continueResult.value.items);
+      } else {
+        setContinueError(
+          continueResult.reason instanceof Error
+            ? continueResult.reason.message
+            : "Failed to load your continue-learning courses."
+        );
+      }
+
+      if (trendingResult.status === "fulfilled") {
+        setTrending(trendingResult.value.items);
+      } else {
+        setTrendingError(
+          trendingResult.reason instanceof Error
+            ? trendingResult.reason.message
+            : "Failed to load trending tech playlists."
+        );
+      }
+
+      if (recommendedResult.status === "fulfilled") {
+        setRecommended(recommendedResult.value.items);
+      } else {
+        setRecommendedError(
+          recommendedResult.reason instanceof Error
+            ? recommendedResult.reason.message
+            : "Failed to load recommended courses."
+        );
+      }
+
+      if (newResult.status === "fulfilled") {
+        setNewCourses(newResult.value.items);
+      } else {
+        setNewCoursesError(
+          newResult.reason instanceof Error
+            ? newResult.reason.message
+            : "Failed to load new courses."
+        );
+      }
+
+      setSubjectLoading(false);
+      setContinueLoading(false);
+      setTrendingLoading(false);
+      setRecommendedLoading(false);
+      setNewCoursesLoading(false);
     }
 
-    void load();
+    void loadHomeData();
 
     return () => {
       cancelled = true;
     };
   }, []);
 
+  function runSearch(technology: string) {
+    const trimmed = technology.trim();
+
+    if (!trimmed) {
+      return;
+    }
+
+    startSearchTransition(() => {
+      void (async () => {
+        try {
+          setSearchError(null);
+          const sortQuery = selectedSorts.length ? `&sortBy=${selectedSorts.join(",")}` : "";
+          const response = await apiFetchMaybeAuth<YoutubeSearchResponse>(
+            `/youtube/search?tech=${encodeURIComponent(trimmed)}${sortQuery}`
+          );
+          setSearchResults(response);
+        } catch (error) {
+          setSearchResults(null);
+          setSearchError(error instanceof Error ? error.message : "Search failed.");
+        }
+      })();
+    });
+  }
+
+  function toggleSort(value: YoutubeSortKey) {
+    setSelectedSorts((current) =>
+      current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value]
+    );
+  }
+
   return (
     <div className="space-y-10">
       <section className="grid gap-8 rounded-[2.75rem] border border-ink/10 bg-white/86 p-8 shadow-soft lg:grid-cols-[minmax(0,1.02fr)_430px] lg:p-10">
         <div className="flex h-full flex-col justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.45em] text-ink/45">Build skills with flow</p>
+            <p className="text-xs uppercase tracking-[0.45em] text-ink/45">Netflix for coding courses</p>
             <h1 className="mt-4 max-w-4xl font-serif text-5xl leading-[0.95] md:text-6xl">
-              Structured courses that turn YouTube lessons into real learning paths.
+              Search ranked YouTube playlists and learn through them like a real course library.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-ink/70">
-              Browse curated subjects, follow lessons in strict order, and pick up exactly where you left off.
+              Discover curated playlists across 100 technologies, compare quality instantly, and resume from the last lesson you watched.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button href="/auth/register">Start learning</Button>
-              <Button href="/auth/login" variant="secondary">I already have an account</Button>
-            </div>
-            <div className="mt-8 flex flex-wrap gap-2 text-sm text-ink/58">
-              <span className="rounded-full border border-ink/10 bg-[#f2efe8] px-3 py-1.5">YouTube-powered lessons</span>
-              <span className="rounded-full border border-ink/10 bg-[#f2efe8] px-3 py-1.5">Resume tracking</span>
-              <span className="rounded-full border border-ink/10 bg-[#f2efe8] px-3 py-1.5">Strict unlock flow</span>
-            </div>
+            <form
+              className="mt-8 rounded-[1.8rem] border border-moss/10 bg-[#f6faf7] p-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                runSearch(searchValue);
+              }}
+            >
+              <label className="text-xs uppercase tracking-[0.25em] text-ink/48" htmlFor="technology-search">
+                Technology search
+              </label>
+              <div className="mt-3 flex flex-col gap-3 md:flex-row">
+                <input
+                  id="technology-search"
+                  list="technology-catalog"
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
+                  placeholder="Search Python, React, Docker, SQL, AI Agents..."
+                  className="min-w-0 flex-1 rounded-full border border-ink/10 bg-white px-5 py-3 text-sm outline-none transition focus:border-moss/40"
+                />
+                <Button type="submit" disabled={isSearching}>
+                  {isSearching ? "Searching..." : "Search playlists"}
+                </Button>
+              </div>
+              <datalist id="technology-catalog">
+                {TOP_TECHNOLOGIES.map((technology) => (
+                  <option key={technology} value={technology} />
+                ))}
+              </datalist>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {TOP_TECHNOLOGIES.slice(0, 12).map((technology) => (
+                  <button
+                    key={technology}
+                    type="button"
+                    className="rounded-full border border-ink/10 bg-white px-3 py-1.5 text-sm text-ink/68 transition hover:border-moss/25 hover:bg-[#eef4ef]"
+                    onClick={() => {
+                      setSearchValue(technology);
+                      runSearch(technology);
+                    }}
+                  >
+                    {technology}
+                  </button>
+                ))}
+              </div>
+              <YoutubeSearchSortFilter selected={selectedSorts} onToggle={toggleSort} />
+            </form>
           </div>
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
             {heroStats.map((item) => (
@@ -143,7 +302,7 @@ export default function HomePage() {
           <div className="relative flex h-full flex-col">
             <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Learning flow</p>
             <h2 className="mt-3 max-w-sm text-3xl font-semibold leading-tight">
-              A simple loop students can follow without friction.
+              Discovery, ranking, playback, and resume in one loop.
             </h2>
             <div className="mt-6 space-y-3">
               {learningFlow.map((item) => (
@@ -165,32 +324,144 @@ export default function HomePage() {
             </div>
             <div className="mt-5 grid grid-cols-3 gap-3">
               <div className="rounded-[1.2rem] border border-moss/8 bg-white/72 p-3 text-center">
-                <p className="text-lg font-semibold">Lock</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-ink/48">Order</p>
+                <p className="text-lg font-semibold">Rank</p>
+                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-ink/48">Best first</p>
               </div>
               <div className="rounded-[1.2rem] border border-moss/8 bg-white/72 p-3 text-center">
                 <p className="text-lg font-semibold">Resume</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-ink/48">State</p>
+                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-ink/48">Last lesson</p>
               </div>
               <div className="rounded-[1.2rem] border border-moss/8 bg-white/72 p-3 text-center">
-                <p className="text-lg font-semibold">Track</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-ink/48">Progress</p>
+                <p className="text-lg font-semibold">Cache</p>
+                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-ink/48">12 hours</p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {error ? <Alert title="Courses unavailable" tone="error">{error}</Alert> : null}
+      {searchError ? <Alert title="Search unavailable" tone="error">{searchError}</Alert> : null}
+      {searchResults ? (
+        <section className="space-y-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Search results</p>
+              <h2 className="mt-2 text-3xl font-semibold">{searchResults.technology} playlists worth starting</h2>
+              {searchResults.sort_by.length ? (
+                <p className="mt-2 text-sm text-ink/58">
+                  Sorted by{" "}
+                  {searchResults.sort_by
+                    .map((value) => YOUTUBE_SORT_OPTIONS.find((option) => option.value === value)?.label ?? value)
+                    .join(", ")}
+                </p>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-ink/45">
+              <span className="rounded-full bg-ink/5 px-3 py-1.5">{searchResults.source}</span>
+              <button
+                type="button"
+                className="rounded-full border border-ink/10 px-3 py-1.5 text-ink/62 transition hover:bg-white"
+                onClick={() => setSearchResults(null)}
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            {searchResults.items.map((course) => (
+              <YoutubeCourseCard key={`${course.playlist_id}-${course.technology}`} course={course} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {continueError ? <Alert title="Continue learning unavailable" tone="error">{continueError}</Alert> : null}
+      {continueLearning.length > 0 || continueLoading ? (
+        <section className="space-y-5">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Continue learning</p>
+              <h2 className="mt-2 text-3xl font-semibold">Resume where you left off</h2>
+            </div>
+          </div>
+          {continueLoading ? <p className="text-sm text-ink/55">Loading resume courses...</p> : null}
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            {continueLearning.map((course) => (
+              <YoutubeCourseCard
+                key={`${course.playlist_id}-${course.technology}-continue`}
+                course={course}
+                actionLabel="Resume playlist"
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="space-y-5">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Published subjects</p>
-            <h2 className="mt-2 text-3xl font-semibold">Pick a course and begin</h2>
+            <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Trending tech courses</p>
+            <h2 className="mt-2 text-3xl font-semibold">Top-ranked playlists across the catalog</h2>
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => runSearch(searchValue)}
+            disabled={isSearching}
+          >
+            Search current term
+          </Button>
+        </div>
+        {trendingError ? <Alert title="Trending unavailable" tone="error">{trendingError}</Alert> : null}
+        {trendingLoading ? <p className="text-sm text-ink/55">Loading trending playlists...</p> : null}
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {visibleTrending.map((course) => (
+            <YoutubeCourseCard key={`${course.playlist_id}-${course.technology}`} course={course} />
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-5">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Recommended courses</p>
+            <h2 className="mt-2 text-3xl font-semibold">Strong next picks from the ranked library</h2>
           </div>
         </div>
-        {loading ? <p className="text-sm text-ink/55">Loading courses...</p> : null}
+        {recommendedError ? <Alert title="Recommendations unavailable" tone="error">{recommendedError}</Alert> : null}
+        {recommendedLoading ? <p className="text-sm text-ink/55">Loading recommended courses...</p> : null}
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {visibleRecommended.map((course) => (
+            <YoutubeCourseCard key={`${course.playlist_id}-${course.technology}-recommended`} course={course} />
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-5">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-ink/45">New courses</p>
+            <h2 className="mt-2 text-3xl font-semibold">Recently published playlists to explore next</h2>
+          </div>
+        </div>
+        {newCoursesError ? <Alert title="New courses unavailable" tone="error">{newCoursesError}</Alert> : null}
+        {newCoursesLoading ? <p className="text-sm text-ink/55">Loading new courses...</p> : null}
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {visibleNewCourses.map((course) => (
+            <YoutubeCourseCard key={`${course.playlist_id}-${course.technology}-new`} course={course} />
+          ))}
+        </div>
+      </section>
+
+      {subjectError ? <Alert title="Courses unavailable" tone="error">{subjectError}</Alert> : null}
+
+      <section className="space-y-5">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Structured subjects</p>
+            <h2 className="mt-2 text-3xl font-semibold">Guided internal tracks already in the LMS</h2>
+          </div>
+        </div>
+        {subjectLoading ? <p className="text-sm text-ink/55">Loading courses...</p> : null}
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {subjects.map((subject) => (
             <article

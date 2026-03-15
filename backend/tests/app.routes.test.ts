@@ -29,4 +29,11 @@ describe("app routes", () => {
     expect(response.status).toBe(401);
     expect(response.body.error).toBe("REFRESH_TOKEN_REQUIRED");
   });
+
+  it("exposes the YouTube technology catalog without auth", async () => {
+    const response = await request(app).get("/api/youtube/technologies");
+
+    expect(response.status).toBe(200);
+    expect(response.body.items).toHaveLength(100);
+  });
 });

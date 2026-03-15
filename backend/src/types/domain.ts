@@ -101,3 +101,35 @@ export interface RefreshTokenRecord {
   created_at: Date;
 }
 
+export interface YoutubeCourseRecord {
+  id: number;
+  playlist_id: string;
+  title: string;
+  channel_name: string;
+  channel_id: string | null;
+  thumbnail: string | null;
+  technology: string;
+  video_count: number;
+  views: number;
+  likes: number;
+  channel_subscribers: number;
+  published_date: Date | null;
+  ranking_score: number;
+  playlist_items_json: string | null;
+  cache_expires_at: Date;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface YoutubeCourseProgressRecord {
+  id: number;
+  user_id: number;
+  playlist_id: string;
+  current_video_index: number;
+  completed_videos: number;
+  total_videos: number;
+  completed_video_indexes_json: string | null;
+  last_watched_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+}
