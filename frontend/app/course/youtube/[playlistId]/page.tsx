@@ -8,6 +8,7 @@ import { AuthGuard } from "@/components/Auth/AuthGuard";
 import { ErrorState } from "@/components/common/ErrorState";
 import { Skeleton } from "@/components/common/Skeleton";
 import { Button } from "@/components/common/Button";
+import { Alert } from "@/components/common/Alert";
 import { YoutubeLessonPlayer, YoutubeLessonPlayerHandle } from "@/components/Youtube/YoutubeLessonPlayer";
 import CourseOverview from "@/components/Youtube/CourseOverview";
 import CourseNotes from "@/components/Youtube/CourseNotes";
