@@ -5,7 +5,7 @@ export const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (env.corsOrigins.indexOf(origin) !== -1 || origin.startsWith("http://localhost:")) {
+    if (env.corsOrigins.indexOf(origin) !== -1 || (env.NODE_ENV !== "production" && origin.startsWith("http://localhost:"))) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
