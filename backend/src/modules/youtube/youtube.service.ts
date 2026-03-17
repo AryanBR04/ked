@@ -519,7 +519,7 @@ async function buildSearchCandidates(technology: string) {
 
     do {
       try {
-        const searchResponse = await youtubeRequest<YoutubeSearchResponse>("/search", {
+        const searchResponse: YoutubeSearchResponse = await youtubeRequest<YoutubeSearchResponse>("/search", {
           part: "snippet",
           type: "playlist",
           q: q,
@@ -527,11 +527,12 @@ async function buildSearchCandidates(technology: string) {
           pageToken: nextPageToken
         });
 
-        const pageIds = (searchResponse.items ?? [])
-          .map((item) => item.id?.playlistId)
-          .filter((id): id is string => Boolean(id));
+        const listItems = (searchResponse.items ?? []);
+        const pageIds: string[] = listItems
+          .map((item: any) => item.id?.playlistId)
+          .filter((id: any): id is string => Boolean(id));
         
-        pageIds.forEach(id => playlistIdsSet.add(id));
+        pageIds.forEach((id: string) => playlistIdsSet.add(id));
         nextPageToken = searchResponse.nextPageToken;
         queryPages++;
         pagesFetched++;
