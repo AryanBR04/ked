@@ -142,7 +142,7 @@ export function YoutubeCourseCard({
             />
           </div>
         ) : null}
-        <Button href={`/course/youtube/${course.playlist_id}`} className="w-full">
+        <Button href={`/courses/youtube/${course.playlist_id}`} className="w-full">
           {course.progress?.completed_videos ? "Resume playlist" : actionLabel}
         </Button>
       </div>

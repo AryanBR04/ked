@@ -15,9 +15,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
-  const isCoursesActive = pathname === "/courses" || pathname.startsWith("/subjects") || pathname.startsWith("/course");
-  const isLearningPathsActive = pathname.startsWith("/learning-path");
-  const isCareerTracksActive = pathname.startsWith("/career-track");
+  const isCoursesActive = pathname.startsWith("/courses") || pathname.startsWith("/subjects");
+  const isLearningPathsActive = pathname.startsWith("/learning-paths");
+  const isCareerTracksActive = pathname.startsWith("/career-tracks");
   const isProfileActive = pathname.startsWith("/profile");
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
