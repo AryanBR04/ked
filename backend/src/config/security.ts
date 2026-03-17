@@ -3,9 +3,15 @@ import { env } from "./env";
 
 export const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // allow requests with no origin (like mobile apps or curl requests)
+    // allow requests with no origin (like curl requests)
     if (!origin) return callback(null, true);
-    if (env.corsOrigins.includes("*") || env.corsOrigins.indexOf(origin) !== -1 || (env.NODE_ENV !== "production" && origin.startsWith("http://localhost:"))) {
+    
+    const allowedOrigins = env.corsOrigins;
+    const isAllowed = allowedOrigins.includes("*") || 
+                      allowedOrigins.includes(origin) || 
+                      (env.NODE_ENV !== "production" && origin.startsWith("http://localhost:"));
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));

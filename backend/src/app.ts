@@ -28,6 +28,14 @@ export function createApp() {
   app.use(requestLogger);
 
   app.use("/api/health", healthRouter);
+  app.use("/api/search", (req, res, next) => {
+    // Standardize tech search to /api/youtube/search
+    if (req.query.q) {
+      req.url = "/search";
+      req.query.tech = req.query.q;
+    }
+    next();
+  }, youtubeRouter);
   app.use("/api/auth", authRouter);
   app.use("/api/subjects", subjectRouter);
   app.use("/api/videos", videoRouter);
