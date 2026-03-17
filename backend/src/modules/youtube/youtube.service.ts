@@ -1,8 +1,10 @@
 import { env } from "../../config/env";
 import type { YoutubeCourseProgressRecord, YoutubeCourseRecord } from "../../types/domain";
 import { AppError } from "../../utils/errors";
+import { handleLessonCompletion } from "../learning-stats/learning.service";
 import { normalizeTechnologyLabel, TOP_TECHNOLOGIES } from "../../utils/technologyCatalog";
-import { calculateYoutubeRankingScore } from "../../utils/youtubeRanking";
+import { generateCourseOverview } from "../../utils/courseOverview";
+import { calculateQualityScore, calculateYoutubeRankingScore } from "../../utils/youtubeRanking";
 import { parseYoutubeSortFields, type YoutubeSortField } from "../../utils/youtubeSorting";
 import {
   getYoutubeCourseByPlaylistId,
@@ -17,8 +19,12 @@ import {
   listYoutubeCoursesByPlaylistIds,
   listYoutubeCourseProgressByPlaylistIds,
   upsertYoutubeCourseProgress,
-  upsertYoutubeCourses
+  upsertYoutubeCourses,
+  getUserLearningProfile,
+  upsertUserLearningProfile,
+  listRankedYoutubeCoursesByTechnologies
 } from "./youtube.repository";
+import * as savedRepo from "../saved-courses/saved-courses.repository";
 
 const YOUTUBE_API_BASE_URL = "https://www.googleapis.com/youtube/v3";
 const TRENDING_TECHNOLOGIES = [
@@ -32,7 +38,18 @@ const TRENDING_TECHNOLOGIES = [
   "TypeScript"
 ];
 
+const TECHNOLOGY_RELATIONSHIPS: Record<string, string[]> = {
+  "Python": ["Django", "Machine Learning", "Data Science", "Flask"],
+  "JavaScript": ["React", "Node.js", "TypeScript", "Vue.js"],
+  "React": ["Next.js", "TypeScript", "JavaScript"],
+  "Machine Learning": ["Data Science", "Python", "Deep Learning"],
+  "Node.js": ["Express", "JavaScript", "TypeScript", "Node.js"],
+  "Java": ["Spring Boot", "Android Development"],
+  "SQL": ["Database Design", "PostgreSQL", "NoSQL"]
+};
+
 interface YoutubeSearchResponse {
+  nextPageToken?: string;
   items?: Array<{
     id?: { playlistId?: string };
   }>;
@@ -75,6 +92,9 @@ interface YoutubePlaylistItemsResponse {
       position?: number;
       thumbnails?: Record<string, { url: string } | undefined>;
     };
+    status?: {
+      privacyStatus?: string;
+    };
   }>;
 }
 
@@ -87,6 +107,9 @@ type YoutubePlaylistItem = {
     title?: string;
     position?: number;
     thumbnails?: Record<string, { url: string } | undefined>;
+  };
+  status?: {
+    privacyStatus?: string;
   };
 };
 
@@ -125,19 +148,35 @@ interface SearchCourseCandidate {
   channelSubscribers: number;
   publishedDate: string | null;
   rankingScore: number;
+  qualityScore: number;
+  courseSummary: string;
+  skillsTags: string;
+  durationSeconds: number;
+  difficulty: string;
   lessons: PlaylistLesson[];
 }
 
 function toPlaylistLesson(item: YoutubePlaylistItem): PlaylistLesson | null {
   const videoId = item.contentDetails?.videoId;
+  const title = item.snippet?.title?.trim() || "Untitled lesson";
+  const privacyStatus = item.status?.privacyStatus;
 
   if (!videoId) {
     return null;
   }
 
+  // Filter out deleted or private videos
+  if (
+    privacyStatus === "private" ||
+    title.toLowerCase() === "deleted video" ||
+    title.toLowerCase() === "private video"
+  ) {
+    return null;
+  }
+
   return {
     video_id: videoId,
-    title: item.snippet?.title?.trim() || "Untitled lesson",
+    title,
     thumbnail: pickThumbnail(item.snippet?.thumbnails),
     position: item.snippet?.position ?? 0,
     published_at: item.contentDetails?.videoPublishedAt ?? null,
@@ -247,7 +286,7 @@ function toProgressSummary(progress: YoutubeCourseProgressRecord | null, fallbac
   };
 }
 
-function toCourseCard(record: YoutubeCourseRecord, progress?: YoutubeCourseProgressRecord | null) {
+function toCourseCard(record: YoutubeCourseRecord, progress?: YoutubeCourseProgressRecord | null, isSaved: boolean = false) {
   return {
     playlist_id: record.playlist_id,
     title: record.title,
@@ -260,7 +299,13 @@ function toCourseCard(record: YoutubeCourseRecord, progress?: YoutubeCourseProgr
     likes: record.likes,
     published_date: record.published_date,
     ranking_score: record.ranking_score,
-    progress: progress ? toProgressSummary(progress, record.video_count) : null
+    quality_score: record.quality_score,
+    course_summary: record.course_summary,
+    skills_tags: record.skills_tags ? JSON.parse(record.skills_tags) : null,
+    duration_seconds: record.duration_seconds,
+    difficulty: record.difficulty,
+    progress: progress ? toProgressSummary(progress, record.video_count) : null,
+    is_saved: isSaved
   };
 }
 
@@ -292,25 +337,35 @@ async function hydrateCourseCards(records: YoutubeCourseRecord[], userId?: numbe
     return items.map((item) => toCourseCard(item, null));
   }
 
-  const progressRows = await listYoutubeCourseProgressByPlaylistIds(
-    userId,
-    items.map((item) => item.playlist_id)
-  );
-  const progressByPlaylistId = new Map(progressRows.map((row) => [row.playlist_id, row]));
+  const [progressRows, savedPlaylistIds] = await Promise.all([
+    listYoutubeCourseProgressByPlaylistIds(
+      userId,
+      items.map((item) => item.playlist_id)
+    ),
+    savedRepo.getSavedPlaylistIds(userId)
+  ]);
 
-  return items.map((item) => toCourseCard(item, progressByPlaylistId.get(item.playlist_id) ?? null));
+  const progressByPlaylistId = new Map(progressRows.map((row) => [row.playlist_id, row]));
+  const savedSet = new Set(savedPlaylistIds);
+
+  return items.map((item) => toCourseCard(
+    item, 
+    progressByPlaylistId.get(item.playlist_id) ?? null,
+    savedSet.has(item.playlist_id)
+  ));
 }
 
 async function fetchPlaylistItemSample(playlistId: string, maxResults = 8) {
   const response = await youtubeRequest<YoutubePlaylistItemsResponse>("/playlistItems", {
-    part: "snippet,contentDetails",
+    part: "snippet,contentDetails,status",
     playlistId,
     maxResults
   });
 
   const lessons = (response.items ?? [])
     .map((item) => toPlaylistLesson(item))
-    .filter((item): item is PlaylistLesson => item !== null);
+    .filter((item): item is PlaylistLesson => item !== null)
+    .map((lesson, index) => ({ ...lesson, position: index }));
 
   const embeddableByVideoId = await fetchVideoEmbeddability(lessons.map((lesson) => lesson.video_id));
 
@@ -326,7 +381,7 @@ async function fetchAllPlaylistLessons(playlistId: string) {
 
   do {
     const response = await youtubeRequest<YoutubePlaylistItemsResponse>("/playlistItems", {
-      part: "snippet,contentDetails",
+      part: "snippet,contentDetails,status",
       playlistId,
       maxResults: 50,
       pageToken: nextPageToken
@@ -341,7 +396,9 @@ async function fetchAllPlaylistLessons(playlistId: string) {
     nextPageToken = response.nextPageToken;
   } while (nextPageToken);
 
-  const sortedLessons = lessons.sort((left, right) => left.position - right.position);
+  const sortedLessons = lessons
+    .sort((left, right) => left.position - right.position)
+    .map((lesson, index) => ({ ...lesson, position: index }));
   const embeddableByVideoId = await fetchVideoEmbeddability(sortedLessons.map((lesson) => lesson.video_id));
 
   return sortedLessons.map((lesson) => ({
@@ -438,48 +495,97 @@ async function fetchChannelSubscribers(channelIds: string[]) {
 }
 
 async function buildSearchCandidates(technology: string) {
-  const searchResponse = await youtubeRequest<YoutubeSearchResponse>("/search", {
-    part: "snippet",
-    type: "playlist",
-    q: `${technology} full course playlist coding tutorial`,
-    maxResults: 20
-  });
+  const playlistIdsSet = new Set<string>();
+  let nextPageToken: string | undefined;
+  let pagesFetched = 0;
+  const MAX_PAGES = 5;
+  const TARGET_CANDIDATES = 50;
 
-  const playlistIds = Array.from(
-    new Set((searchResponse.items ?? []).map((item) => item.id?.playlistId).filter(Boolean) as string[])
-  );
+  console.log(`[YouTube Search] Starting broad search for: "${technology}"`);
+
+  const searchQueries = [
+    `${technology} course`,
+    `${technology} tutorial`,
+    `${technology} playlist`,
+    `${technology} programming`
+  ];
+
+  for (const q of searchQueries) {
+    if (playlistIdsSet.size >= TARGET_CANDIDATES) break;
+    
+    console.log(`[YouTube Search] Query: "${q}"`);
+    nextPageToken = undefined;
+    let queryPages = 0;
+
+    do {
+      try {
+        const searchResponse = await youtubeRequest<YoutubeSearchResponse>("/search", {
+          part: "snippet",
+          type: "playlist",
+          q: q,
+          maxResults: 25,
+          pageToken: nextPageToken
+        });
+
+        const pageIds = (searchResponse.items ?? [])
+          .map((item) => item.id?.playlistId)
+          .filter((id): id is string => Boolean(id));
+        
+        pageIds.forEach(id => playlistIdsSet.add(id));
+        nextPageToken = searchResponse.nextPageToken;
+        queryPages++;
+        pagesFetched++;
+
+        console.log(`[YouTube Search] Page ${pagesFetched}: Found ${pageIds.length} playlists. Total unique: ${playlistIdsSet.size}`);
+      } catch (err) {
+        console.error(`[YouTube Search] Search failed for query "${q}":`, err);
+        break;
+      }
+    } while (playlistIdsSet.size < TARGET_CANDIDATES && nextPageToken && queryPages < 2);
+  }
+
+  const playlistIds = Array.from(playlistIdsSet);
 
   if (!playlistIds.length) {
+    console.log(`[YouTube Search] No playlists found at all for: ${technology}`);
     return [] as SearchCourseCandidate[];
   }
 
-  const playlistsResponse = await youtubeRequest<YoutubePlaylistsResponse>("/playlists", {
-    part: "snippet,contentDetails",
-    id: playlistIds.join(","),
-    maxResults: playlistIds.length
-  });
-  const playlistMap = new Map(
-    (playlistsResponse.items ?? [])
-      .filter((item): item is NonNullable<typeof item> & { id: string } => Boolean(item?.id))
-      .map((item) => [item.id, item])
-  );
-  const channelSubscribers = await fetchChannelSubscribers(
-    Array.from(
-      new Set(
-        (playlistsResponse.items ?? [])
-          .map((item) => item.snippet?.channelId)
-          .filter((value): value is string => Boolean(value))
-      )
+  // Fetch details in chunks of 50 (YouTube limit)
+  const playlistMap = new Map<string, any>();
+  for (let i = 0; i < playlistIds.length; i += 50) {
+    const chunk = playlistIds.slice(i, i + 50);
+    const playlistsResponse = await youtubeRequest<YoutubePlaylistsResponse>("/playlists", {
+      part: "snippet,contentDetails",
+      id: chunk.join(","),
+      maxResults: chunk.length
+    });
+    
+    (playlistsResponse.items ?? []).forEach(item => {
+      if (item.id) playlistMap.set(item.id, item);
+    });
+  }
+
+  console.log(`[YouTube Search] Playlists details fetched: ${playlistMap.size} out of ${playlistIds.length}`);
+
+  const channelIds = Array.from(
+    new Set(
+      Array.from(playlistMap.values())
+        .map((item) => item.snippet?.channelId)
+        .filter((value): value is string => Boolean(value))
     )
   );
-
+  
+  const channelSubscribers = await fetchChannelSubscribers(channelIds);
   const sampleLessonsByPlaylist = new Map<string, PlaylistLesson[]>();
 
+  console.log(`[YouTube Search] Extracting sample lessons for ${playlistMap.size} playlists...`);
+
   await Promise.all(
-    playlistIds.map(async (playlistId) => {
+    Array.from(playlistMap.keys()).map(async (playlistId) => {
       try {
         sampleLessonsByPlaylist.set(playlistId, await fetchPlaylistItemSample(playlistId));
-      } catch {
+      } catch (err) {
         sampleLessonsByPlaylist.set(playlistId, []);
       }
     })
@@ -494,11 +600,12 @@ async function buildSearchCandidates(technology: string) {
   );
   const videoStats = await fetchVideoStatistics(sampleVideoIds);
 
-  return playlistIds
+  const candidates = Array.from(playlistMap.keys())
     .map((playlistId) => {
       const playlist = playlistMap.get(playlistId);
 
       if (!playlist?.snippet) {
+        console.warn(`[YouTube Search] Skipping ${playlistId}: No snippet found.`);
         return null;
       }
 
@@ -513,12 +620,24 @@ async function buildSearchCandidates(technology: string) {
         },
         { views: 0, likes: 0 }
       );
+
       const sampleCount = Math.max(lessons.length, 1);
       const videoCount = Math.max(playlist.contentDetails?.itemCount ?? lessons.length, lessons.length);
       const scale = videoCount / sampleCount;
       const estimatedViews = Math.round(sampleTotals.views * scale);
       const estimatedLikes = Math.round(sampleTotals.likes * scale);
       const publishedDate = playlist.snippet.publishedAt ?? null;
+      
+      const durationSeconds = videoCount * 15 * 60;
+      const difficulty = playlist.snippet.title?.toLowerCase().includes("advanced") ? "Advanced" 
+                       : playlist.snippet.title?.toLowerCase().includes("intermediate") ? "Intermediate" 
+                       : "Beginner";
+
+      const overview = generateCourseOverview(
+        playlist.snippet.title ?? "",
+        (playlist as any).snippet.description ?? "",
+        lessons.map(l => l.title)
+      );
 
       return {
         playlistId,
@@ -532,16 +651,31 @@ async function buildSearchCandidates(technology: string) {
         likes: estimatedLikes,
         channelSubscribers: playlist.snippet.channelId ? (channelSubscribers.get(playlist.snippet.channelId) ?? 0) : 0,
         publishedDate,
+        durationSeconds,
+        difficulty,
         rankingScore: calculateYoutubeRankingScore({
           views: estimatedViews,
           likes: estimatedLikes,
           publishedDate: publishedDate ?? new Date().toISOString()
         }),
+        qualityScore: calculateQualityScore({
+          views: estimatedViews,
+          likes: estimatedLikes,
+          channelSubscribers: playlist.snippet.channelId ? (channelSubscribers.get(playlist.snippet.channelId) ?? 0) : 0,
+          publishedDate: publishedDate ?? new Date().toISOString(),
+          lessonCount: videoCount
+        }),
+        courseSummary: overview.courseSummary ?? "No summary available",
+        skillsTags: JSON.stringify(overview.skillsTags),
         lessons
       } satisfies SearchCourseCandidate;
     })
-    .filter((item): item is SearchCourseCandidate => Boolean(item))
-    .sort((left, right) => right.rankingScore - left.rankingScore)
+    .filter((item): item is SearchCourseCandidate => item !== null);
+
+  console.log(`[YouTube Search] Finished processing. Total valid candidates: ${candidates.length}. Returning top 20.`);
+
+  return candidates
+    .sort((left, right) => (right?.rankingScore ?? 0) - (left?.rankingScore ?? 0))
     .slice(0, 20);
 }
 
@@ -556,22 +690,29 @@ async function refreshTechnologyCache(technology: string) {
   const cacheExpiresAt = getCacheExpiryDate();
 
   await upsertYoutubeCourses(
-    candidates.map((candidate) => ({
-      playlistId: candidate.playlistId,
-      title: candidate.title,
-      channelName: candidate.channelName,
-      channelId: candidate.channelId,
-      thumbnail: candidate.thumbnail,
-      technology,
-      videoCount: candidate.videoCount,
-      views: candidate.views,
-      likes: candidate.likes,
-      channelSubscribers: candidate.channelSubscribers,
-      publishedDate: candidate.publishedDate,
-      rankingScore: candidate.rankingScore,
-      playlistItemsJson: JSON.stringify(candidate.lessons),
-      cacheExpiresAt
-    }))
+    candidates
+      .filter((candidate): candidate is SearchCourseCandidate => candidate !== null)
+      .map((candidate) => ({
+        playlistId: candidate.playlistId,
+        title: candidate.title,
+        channelName: candidate.channelName,
+        channelId: candidate.channelId,
+        thumbnail: candidate.thumbnail,
+        technology,
+        videoCount: candidate.videoCount,
+        views: candidate.views,
+        likes: candidate.likes,
+        channelSubscribers: candidate.channelSubscribers,
+        publishedDate: candidate.publishedDate,
+        rankingScore: candidate.rankingScore,
+        qualityScore: candidate.qualityScore,
+        courseSummary: candidate.courseSummary,
+        skillsTags: candidate.skillsTags,
+        playlistItemsJson: JSON.stringify(candidate.lessons),
+        duration_seconds: candidate.durationSeconds,
+        difficulty: candidate.difficulty,
+        cacheExpiresAt
+      }))
   );
 
   return candidates;
@@ -676,28 +817,47 @@ async function fetchPlaylistDetailsById(playlistId: string, technology?: string 
       ?? "General"
     );
 
-  await upsertYoutubeCourses([
-    {
-      playlistId: playlist.id,
-      title: playlist.snippet.title?.trim() || "Untitled playlist",
-      channelName: playlist.snippet.channelTitle?.trim() || "YouTube creator",
-      channelId: playlist.snippet.channelId ?? null,
-      thumbnail: pickThumbnail(playlist.snippet.thumbnails),
-      technology: resolvedTechnology,
-      videoCount,
-      views,
-      likes,
-      channelSubscribers,
-      publishedDate,
-      rankingScore: calculateYoutubeRankingScore({
+    const overview = generateCourseOverview(
+      playlist.snippet.title ?? "",
+      (playlist as any).snippet.description ?? "",
+      lessons.map(l => l.title)
+    );
+
+    await upsertYoutubeCourses([
+      {
+        playlistId: playlist.id,
+        title: playlist.snippet.title?.trim() || "Untitled playlist",
+        channelName: playlist.snippet.channelTitle?.trim() || "YouTube creator",
+        channelId: playlist.snippet.channelId ?? null,
+        thumbnail: pickThumbnail(playlist.snippet.thumbnails),
+        technology: resolvedTechnology,
+        videoCount,
         views,
         likes,
-        publishedDate: publishedDate ?? new Date().toISOString()
-      }),
-      playlistItemsJson: JSON.stringify(lessons),
-      cacheExpiresAt: getCacheExpiryDate()
-    }
-  ]);
+        channelSubscribers,
+        publishedDate,
+        rankingScore: calculateYoutubeRankingScore({
+          views,
+          likes,
+          publishedDate: publishedDate ?? new Date().toISOString()
+        }),
+        qualityScore: calculateQualityScore({
+          views,
+          likes,
+          channelSubscribers,
+          publishedDate: publishedDate ?? new Date().toISOString(),
+          lessonCount: videoCount
+        }),
+        courseSummary: overview.courseSummary,
+        skillsTags: JSON.stringify(overview.skillsTags),
+        playlistItemsJson: JSON.stringify(lessons),
+        duration_seconds: videoCount * 15 * 60,
+        difficulty: playlist.snippet.title?.toLowerCase().includes("advanced") ? "Advanced" 
+                  : playlist.snippet.title?.toLowerCase().includes("intermediate") ? "Intermediate" 
+                  : "Beginner",
+        cacheExpiresAt: getCacheExpiryDate()
+      }
+    ]);
 
   return getYoutubeCourseByPlaylistId(playlist.id);
 }
@@ -714,6 +874,10 @@ function playlistNeedsRefresh(record: YoutubeCourseRecord | null) {
   }
 
   if (lessons.some((lesson) => lesson.is_embeddable === null)) {
+    return true;
+  }
+
+  if (!record.course_summary || !record.skills_tags) {
     return true;
   }
 
@@ -781,6 +945,33 @@ export async function getTrendingYoutubeCourses(limit: number, userId?: number) 
 }
 
 export async function getRecommendedYoutubeCourses(limit: number, userId?: number) {
+  if (userId) {
+    const profile = await getUserLearningProfile(userId);
+    if (profile.length > 0) {
+      // Collect studied technologies
+      const studiedTechs = profile.map(p => p.technology);
+      const relatedTechs = new Set<string>();
+      studiedTechs.forEach(tech => {
+        (TECHNOLOGY_RELATIONSHIPS[tech] || []).forEach(rel => relatedTechs.add(rel));
+      });
+
+      const allRelevantTechs = Array.from(new Set([...studiedTechs, ...Array.from(relatedTechs)]));
+      const rankedCourses = await listRankedYoutubeCoursesByTechnologies(allRelevantTechs, limit * 2);
+      
+      const continueLearning = await getContinueLearningYoutubeCourses(userId, limit);
+      const excludedPlaylistIds = new Set(continueLearning.items.map((item) => item.playlist_id));
+      const filtered = dedupeYoutubeCourses(rankedCourses).filter((item) => !excludedPlaylistIds.has(item.playlist_id));
+
+      if (filtered.length >= limit) {
+        return {
+          generated_at: new Date().toISOString(),
+          items: (await hydrateCourseCards(filtered, userId)).slice(0, limit)
+        };
+      }
+    }
+  }
+
+  // Fallback to general ranked courses
   const ranked = await listRankedYoutubeCourses(limit * 4);
   const continueLearning = userId ? await getContinueLearningYoutubeCourses(userId, limit) : { items: [] };
   const excludedPlaylistIds = new Set(continueLearning.items.map((item) => item.playlist_id));
@@ -840,6 +1031,10 @@ export async function getYoutubePlaylistDetail(userId: number, playlistId: strin
     likes: cached.likes,
     published_date: cached.published_date,
     ranking_score: cached.ranking_score,
+    duration_seconds: cached.duration_seconds,
+    difficulty: cached.difficulty,
+    course_summary: cached.course_summary,
+    skills_tags: cached.skills_tags ? JSON.parse(cached.skills_tags) : null,
     lessons,
     progress: progressSummary,
     resume_video_index: Math.min(progressSummary.current_video_index, Math.max(lessons.length - 1, 0))
@@ -895,6 +1090,22 @@ export async function saveYoutubePlaylistProgress(
     completedVideoIndexesJson: JSON.stringify(completedVideoIndexes),
     lastWatchedAt: new Date()
   });
+
+  if (input.completed_video_index !== undefined) {
+    const avgDurationSeconds = course.video_count > 0 ? (course.duration_seconds || 0) / course.video_count : 0;
+    const isCompleted = (completedVideoIndexes.length === safeTotalVideos) && (existing ? existing.completed_videos < safeTotalVideos : true);
+    
+    await handleLessonCompletion(userId, avgDurationSeconds, isCompleted);
+    
+    if (isCompleted) {
+      await upsertUserLearningProfile({
+        userId,
+        technology: course.technology,
+        skillLevel: course.difficulty as any,
+        coursesCompletedDelta: 1
+      });
+    }
+  }
 
   return getYoutubePlaylistProgress(userId, playlistId);
 }

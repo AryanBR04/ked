@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { Alert } from "@/components/common/Alert";
 import { Button } from "@/components/common/Button";
@@ -400,6 +401,22 @@ export default function HomePage() {
       <section className="space-y-5">
         <div className="flex items-end justify-between gap-3">
           <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Recommended For You</p>
+            <h2 className="mt-2 text-3xl font-semibold">Strong next picks from the ranked library</h2>
+          </div>
+        </div>
+        {recommendedError ? <Alert title="Recommendations unavailable" tone="error">{recommendedError}</Alert> : null}
+        {recommendedLoading ? <p className="text-sm text-ink/55">Loading recommended courses...</p> : null}
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {visibleRecommended.map((course) => (
+            <YoutubeCourseCard key={`${course.playlist_id}-${course.technology}-recommended`} course={course} />
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-5">
+        <div className="flex items-end justify-between gap-3">
+          <div>
             <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Trending tech courses</p>
             <h2 className="mt-2 text-3xl font-semibold">Top-ranked playlists across the catalog</h2>
           </div>
@@ -423,15 +440,76 @@ export default function HomePage() {
       <section className="space-y-5">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Recommended courses</p>
-            <h2 className="mt-2 text-3xl font-semibold">Strong next picks from the ranked library</h2>
+            <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Structured Journeys</p>
+            <h2 className="mt-2 text-3xl font-semibold">Expert Curated Learning Paths</h2>
+          </div>
+          <Link
+            href="/learning-paths"
+            className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+          >
+            View all paths
+          </Link>
+        </div>
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="rounded-[1.8rem] border border-ink/8 bg-[linear-gradient(135deg,#f5efe3_0%,#ffffff_100%)] p-6 transition-shadow hover:shadow-soft flex flex-col justify-between items-start">
+            <div>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-ink/70 border border-ink/5 mb-3 inline-block">Beginner to Advanced</span>
+              <h3 className="text-xl font-semibold leading-tight">Python Developer Path</h3>
+              <p className="mt-2 text-sm text-ink/68">Master Python from basics to advanced frameworks.</p>
+            </div>
+            <Link href="/learning-path/1" className="mt-6 text-sm font-medium text-moss flex items-center gap-1 hover:gap-2 transition-all">
+              Start Path <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+            </Link>
+          </div>
+          <div className="rounded-[1.8rem] border border-ink/8 bg-[linear-gradient(135deg,#f0f4ff_0%,#ffffff_100%)] p-6 transition-shadow hover:shadow-soft flex flex-col justify-between items-start">
+            <div>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-ink/70 border border-ink/5 mb-3 inline-block">Beginner to Intermediate</span>
+              <h3 className="text-xl font-semibold leading-tight">Frontend Developer Path</h3>
+              <p className="mt-2 text-sm text-ink/68">Learn HTML, CSS, JavaScript, and React.</p>
+            </div>
+            <Link href="/learning-path/2" className="mt-6 text-sm font-medium text-moss flex items-center gap-1 hover:gap-2 transition-all">
+              Start Path <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+            </Link>
           </div>
         </div>
-        {recommendedError ? <Alert title="Recommendations unavailable" tone="error">{recommendedError}</Alert> : null}
-        {recommendedLoading ? <p className="text-sm text-ink/55">Loading recommended courses...</p> : null}
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          {visibleRecommended.map((course) => (
-            <YoutubeCourseCard key={`${course.playlist_id}-${course.technology}-recommended`} course={course} />
+      </section>
+
+      <section className="space-y-5">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Job-Ready Programs</p>
+            <h2 className="mt-2 text-3xl font-semibold">Career Tracks</h2>
+          </div>
+          <Link
+            href="/career-tracks"
+            className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+          >
+            View all tracks
+          </Link>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-3">
+          {(
+            [
+              { id: 1, icon: "🎨", title: "Become a Frontend Developer", duration: "3 months", gradient: "from-[#f0f4ff]" },
+              { id: 3, icon: "📊", title: "Become a Data Analyst", duration: "3 months", gradient: "from-[#fff7ed]" },
+              { id: 4, icon: "🤖", title: "Become an AI Engineer", duration: "5 months", gradient: "from-[#fdf4ff]" },
+            ] as const
+          ).map((item) => (
+            <Link
+              key={item.id}
+              href={`/career-track/${item.id}`}
+              className={`group flex flex-col justify-between rounded-[1.8rem] border border-ink/8 bg-gradient-to-br ${item.gradient} to-white p-6 transition-all hover:border-moss/35 hover:shadow-soft hover:-translate-y-0.5`}
+            >
+              <div>
+                <span className="text-3xl mb-3 block">{item.icon}</span>
+                <h3 className="text-lg font-semibold leading-tight group-hover:text-moss transition-colors">{item.title}</h3>
+                <p className="mt-1 text-xs text-ink/45 uppercase tracking-widest">⏱ {item.duration}</p>
+              </div>
+              <span className="mt-5 flex items-center gap-1 text-sm font-semibold text-moss">
+                Start Track
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" className="transition-transform group-hover:translate-x-1"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+              </span>
+            </Link>
           ))}
         </div>
       </section>
@@ -452,55 +530,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {subjectError ? <Alert title="Courses unavailable" tone="error">{subjectError}</Alert> : null}
 
-      <section className="space-y-5">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-ink/45">Structured subjects</p>
-            <h2 className="mt-2 text-3xl font-semibold">Guided internal tracks already in the LMS</h2>
-          </div>
-        </div>
-        {subjectLoading ? <p className="text-sm text-ink/55">Loading courses...</p> : null}
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {subjects.map((subject) => (
-            <article
-              key={subject.id}
-              className="rounded-4xl border border-ink/10 bg-white p-6 shadow-soft"
-            >
-              <div className="relative h-44 overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-[#edf3ee] via-fog to-white">
-                {subject.thumbnail_url ? (
-                  <Image
-                    src={subject.thumbnail_url}
-                    alt={`${subject.title} thumbnail`}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 1280px) 50vw, 33vw"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-5xl font-semibold text-ink/25">
-                    {courseInitials(subject.title)}
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-ink/15 via-transparent to-transparent" />
-              </div>
-              <div className="mt-5">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="rounded-full bg-ink/5 px-3 py-1 text-xs uppercase tracking-[0.22em] text-ink/60">
-                    {subject.category ?? "General"}
-                  </span>
-                  <span className="text-xs text-ink/45">{subject.instructor_name ?? "Instructor"}</span>
-                </div>
-                <h3 className="mt-4 text-2xl font-semibold">{subject.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-ink/68">{subject.description}</p>
-                <div className="mt-5">
-                  <Button href={`/subjects/${subject.id}`}>View course</Button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

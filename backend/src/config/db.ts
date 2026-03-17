@@ -66,8 +66,9 @@ export async function query<T>(sql: string, params: unknown[] = []): Promise<T> 
   return rows as T;
 }
 
-export async function execute(sql: string, params: unknown[] = []): Promise<void> {
-  await getDbPool().execute(sql, params as any[]);
+export async function execute(sql: string, params: unknown[] = []): Promise<any> {
+  const [result] = await getDbPool().execute(sql, params as any[]);
+  return result;
 }
 
 export async function pingDatabase(): Promise<void> {

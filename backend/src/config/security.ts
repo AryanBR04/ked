@@ -2,7 +2,15 @@ import type { CookieOptions } from "express";
 import { env } from "./env";
 
 export const corsOptions = {
-  origin: env.corsOrigins,
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (env.corsOrigins.indexOf(origin) !== -1 || origin.startsWith("http://localhost:")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true
 };
 

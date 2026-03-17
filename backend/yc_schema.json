@@ -1,0 +1,202 @@
+[
+  {
+    "Field": "id",
+    "Type": "bigint unsigned",
+    "Null": "NO",
+    "Key": "PRI",
+    "Default": null,
+    "Extra": "auto_increment"
+  },
+  {
+    "Field": "playlist_id",
+    "Type": "varchar(120)",
+    "Null": "NO",
+    "Key": "MUL",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "title",
+    "Type": "varchar(255)",
+    "Null": "NO",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "channel_name",
+    "Type": "varchar(255)",
+    "Null": "NO",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "channel_id",
+    "Type": "varchar(120)",
+    "Null": "YES",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "thumbnail",
+    "Type": "varchar(500)",
+    "Null": "YES",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "technology",
+    "Type": "varchar(120)",
+    "Null": "NO",
+    "Key": "MUL",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "technology_id",
+    "Type": "bigint unsigned",
+    "Null": "YES",
+    "Key": "MUL",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "video_count",
+    "Type": "int",
+    "Null": "NO",
+    "Key": "",
+    "Default": "0",
+    "Extra": ""
+  },
+  {
+    "Field": "total_duration_seconds",
+    "Type": "int unsigned",
+    "Null": "NO",
+    "Key": "MUL",
+    "Default": "0",
+    "Extra": ""
+  },
+  {
+    "Field": "difficulty_level",
+    "Type": "varchar(32)",
+    "Null": "NO",
+    "Key": "",
+    "Default": "Beginner",
+    "Extra": ""
+  },
+  {
+    "Field": "course_summary",
+    "Type": "text",
+    "Null": "YES",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "views",
+    "Type": "bigint unsigned",
+    "Null": "NO",
+    "Key": "",
+    "Default": "0",
+    "Extra": ""
+  },
+  {
+    "Field": "likes",
+    "Type": "bigint unsigned",
+    "Null": "NO",
+    "Key": "",
+    "Default": "0",
+    "Extra": ""
+  },
+  {
+    "Field": "channel_subscribers",
+    "Type": "bigint unsigned",
+    "Null": "NO",
+    "Key": "",
+    "Default": "0",
+    "Extra": ""
+  },
+  {
+    "Field": "published_date",
+    "Type": "datetime",
+    "Null": "YES",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "ranking_score",
+    "Type": "decimal(12,6)",
+    "Null": "NO",
+    "Key": "MUL",
+    "Default": "0.000000",
+    "Extra": ""
+  },
+  {
+    "Field": "quality_score",
+    "Type": "decimal(10,6)",
+    "Null": "YES",
+    "Key": "",
+    "Default": "0.000000",
+    "Extra": ""
+  },
+  {
+    "Field": "playlist_items_json",
+    "Type": "longtext",
+    "Null": "YES",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "cache_expires_at",
+    "Type": "datetime",
+    "Null": "NO",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "created_at",
+    "Type": "timestamp",
+    "Null": "NO",
+    "Key": "",
+    "Default": "CURRENT_TIMESTAMP",
+    "Extra": "DEFAULT_GENERATED"
+  },
+  {
+    "Field": "updated_at",
+    "Type": "timestamp",
+    "Null": "NO",
+    "Key": "",
+    "Default": "CURRENT_TIMESTAMP",
+    "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+  },
+  {
+    "Field": "duration_seconds",
+    "Type": "int",
+    "Null": "YES",
+    "Key": "",
+    "Default": "0",
+    "Extra": ""
+  },
+  {
+    "Field": "difficulty",
+    "Type": "varchar(50)",
+    "Null": "YES",
+    "Key": "",
+    "Default": "Beginner",
+    "Extra": ""
+  },
+  {
+    "Field": "skills_tags",
+    "Type": "text",
+    "Null": "YES",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  }
+]

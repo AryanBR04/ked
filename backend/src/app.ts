@@ -11,6 +11,12 @@ import { progressRouter } from "./modules/progress/progress.routes";
 import { subjectRouter } from "./modules/subjects/subject.routes";
 import { youtubeRouter } from "./modules/youtube/youtube.routes";
 import { videoRouter } from "./modules/videos/video.routes";
+import { learningPathsRouter } from "./modules/learning-paths/learning-paths.routes";
+import { careerTracksRouter } from "./modules/career-tracks/career-tracks.routes";
+import learningRouter from "./modules/learning-stats/learning.routes";
+import { notesRouter } from "./modules/notes/notes.routes";
+import projectsRouter from "./modules/project/project.routes";
+import { savedCoursesRouter } from "./modules/saved-courses/saved-courses.routes";
 
 export function createApp() {
   const app = express();
@@ -27,6 +33,12 @@ export function createApp() {
   app.use("/api/videos", videoRouter);
   app.use("/api/progress", progressRouter);
   app.use("/api/youtube", youtubeRouter);
+  app.use("/api/learning-paths", learningPathsRouter);
+  app.use("/api/career-tracks", careerTracksRouter);
+  app.use("/api/learning-stats", learningRouter);
+  app.use("/api/notes", notesRouter);
+  app.use("/api/projects", projectsRouter);
+  app.use("/api/saved-courses", savedCoursesRouter);
 
   app.use(errorHandler);
 

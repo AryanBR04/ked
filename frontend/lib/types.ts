@@ -88,7 +88,12 @@ export interface YoutubeCourseCardItem {
   likes: number;
   published_date: string | null;
   ranking_score: number;
+  quality_score: number;
+  course_summary: string | null;
+  skills_tags: string[] | null;
+  difficulty: "Beginner" | "Intermediate" | "Advanced" | null;
   progress: YoutubeCourseProgressSummary | null;
+  is_saved?: boolean;
 }
 
 export interface YoutubeLesson {
@@ -136,7 +141,60 @@ export interface YoutubePlaylistDetail {
   likes: number;
   published_date: string | null;
   ranking_score: number;
+  quality_score: number;
+  course_summary: string | null;
+  skills_tags: string[] | null;
+  duration_seconds: number | null;
+  difficulty: string | null;
   lessons: YoutubeLesson[];
   progress: YoutubeCourseProgressSummary;
   resume_video_index: number;
+}
+
+export interface CourseNote {
+  id: number;
+  user_id: number;
+  playlist_id: string;
+  video_index: number;
+  timestamp_seconds: number;
+  note_text: string;
+  created_at: string;
+  course_title?: string;
+}
+
+export interface UserLearningProfile {
+  id: number;
+  user_id: number;
+  technology: string;
+  skill_level: 'Beginner' | 'Intermediate' | 'Advanced';
+  courses_completed: number;
+  last_updated: string;
+}
+
+export interface Project {
+  id: number;
+  title: string;
+  description: string;
+  technology: string;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+  estimated_hours: number;
+  steps_json: string | null;
+  skills_required_json: string | null;
+  created_at: string;
+}
+
+export interface UserProject {
+  id: number;
+  user_id: number;
+  project_id: number;
+  status: 'not_started' | 'in_progress' | 'completed';
+  github_link: string | null;
+  project_notes: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  project_title?: string;
+  project_description?: string;
+  project_technology?: string;
 }

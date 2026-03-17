@@ -11,14 +11,15 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants = {
-  primary: "bg-ink text-fog hover:bg-moss",
-  secondary: "bg-white text-ink ring-1 ring-ink/12 hover:bg-[#eef4ef]",
-  ghost: "bg-transparent text-ink hover:bg-ink/5"
+  primary: "bg-ink text-fog hover:bg-moss shadow-sm hover:shadow-md",
+  secondary: "bg-white text-ink ring-1 ring-ink/12 hover:bg-[#eef4ef] hover:ring-ink/20",
+  ghost: "bg-transparent text-ink hover:bg-ink/5",
+  danger: "bg-red-600 text-white hover:bg-red-700 shadow-sm"
 };
 
-function classes(variant: NonNullable<ButtonProps["variant"]>, className?: string) {
+function classes(variant: NonNullable<ButtonProps["variant"]>, className?: string, disabled?: boolean) {
   return [
-    "inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold transition",
+    "inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-bold tracking-tight transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none",
     variants[variant],
     className ?? ""
   ].join(" ");
