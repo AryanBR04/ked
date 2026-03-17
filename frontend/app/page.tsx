@@ -457,7 +457,7 @@ export default function HomePage() {
               <h3 className="text-xl font-semibold leading-tight">Python Developer Path</h3>
               <p className="mt-2 text-sm text-ink/68">Master Python from basics to advanced frameworks.</p>
             </div>
-            <Link href="/learning-path/1" className="mt-6 text-sm font-medium text-moss flex items-center gap-1 hover:gap-2 transition-all">
+            <Link href="/learning-paths/1" className="mt-6 text-sm font-medium text-moss flex items-center gap-1 hover:gap-2 transition-all">
               Start Path <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
             </Link>
           </div>
@@ -467,7 +467,7 @@ export default function HomePage() {
               <h3 className="text-xl font-semibold leading-tight">Frontend Developer Path</h3>
               <p className="mt-2 text-sm text-ink/68">Learn HTML, CSS, JavaScript, and React.</p>
             </div>
-            <Link href="/learning-path/2" className="mt-6 text-sm font-medium text-moss flex items-center gap-1 hover:gap-2 transition-all">
+            <Link href="/learning-paths/2" className="mt-6 text-sm font-medium text-moss flex items-center gap-1 hover:gap-2 transition-all">
               Start Path <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
             </Link>
           </div>
@@ -497,7 +497,7 @@ export default function HomePage() {
           ).map((item) => (
             <Link
               key={item.id}
-              href={`/career-track/${item.id}`}
+              href={`/career-tracks/${item.id}`}
               className={`group flex flex-col justify-between rounded-[1.8rem] border border-ink/8 bg-gradient-to-br ${item.gradient} to-white p-6 transition-all hover:border-moss/35 hover:shadow-soft hover:-translate-y-0.5`}
             >
               <div>

@@ -75,7 +75,7 @@ export default function CareerTracksPage() {
           {tracks.map((track) => (
             <Link
               key={track.id}
-              href={`/career-track/${track.id}`}
+              href={`/career-tracks/${track.id}`}
               className={`group flex flex-col justify-between overflow-hidden rounded-[2rem] border border-ink/8 bg-gradient-to-br ${TRACK_GRADIENTS[track.id] ?? "from-white to-white"} p-6 transition-all hover:border-moss/40 hover:shadow-soft hover:-translate-y-1`}
             >
               <div>

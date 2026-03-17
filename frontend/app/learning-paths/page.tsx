@@ -63,7 +63,7 @@ export default function LearningPathsPage() {
         <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {paths.map((path) => (
             <Link 
-              href={`/learning-path/${path.id}`} 
+              href={`/learning-paths/${path.id}`} 
               key={path.id}
               className="group flex flex-col justify-between overflow-hidden rounded-[1.8rem] border border-ink/8 bg-white p-6 transition-all hover:border-moss/40 hover:shadow-soft"
             >
