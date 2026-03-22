@@ -165,12 +165,14 @@ function toPlaylistLesson(item: YoutubePlaylistItem): PlaylistLesson | null {
     return null;
   }
 
-  // Filter out deleted or private videos
-  if (
+  // Filter out deleted, private, or unavailable videos
+  const isUnavailable = 
     privacyStatus === "private" ||
-    title.toLowerCase() === "deleted video" ||
-    title.toLowerCase() === "private video"
-  ) {
+    title.toLowerCase().includes("deleted video") ||
+    title.toLowerCase().includes("private video") ||
+    title.toLowerCase().includes("unavailable video");
+
+  if (isUnavailable) {
     return null;
   }
 
@@ -604,13 +606,12 @@ async function buildSearchCandidates(technology: string) {
   const candidates = Array.from(playlistMap.keys())
     .map((playlistId) => {
       const playlist = playlistMap.get(playlistId);
+      const lessons = sampleLessonsByPlaylist.get(playlistId) ?? [];
 
-      if (!playlist?.snippet) {
-        console.warn(`[YouTube Search] Skipping ${playlistId}: No snippet found.`);
+      if (!playlist?.snippet || lessons.length === 0) {
+        console.warn(`[YouTube Search] Skipping ${playlistId}: No snippet found or 0 valid lessons.`);
         return null;
       }
-
-      const lessons = sampleLessonsByPlaylist.get(playlistId) ?? [];
       const sampleTotals = lessons.reduce(
         (totals, lesson) => {
           const stat = videoStats.get(lesson.video_id);
@@ -657,14 +658,16 @@ async function buildSearchCandidates(technology: string) {
         rankingScore: calculateYoutubeRankingScore({
           views: estimatedViews,
           likes: estimatedLikes,
-          publishedDate: publishedDate ?? new Date().toISOString()
+          publishedDate: publishedDate ?? new Date().toISOString(),
+          validRatio: lessons.length / Math.max(videoCount, lessons.length)
         }),
         qualityScore: calculateQualityScore({
           views: estimatedViews,
           likes: estimatedLikes,
           channelSubscribers: playlist.snippet.channelId ? (channelSubscribers.get(playlist.snippet.channelId) ?? 0) : 0,
           publishedDate: publishedDate ?? new Date().toISOString(),
-          lessonCount: videoCount
+          lessonCount: videoCount,
+          validRatio: lessons.length / Math.max(videoCount, lessons.length)
         }),
         courseSummary: overview.courseSummary ?? "No summary available",
         skillsTags: JSON.stringify(overview.skillsTags),
@@ -723,7 +726,7 @@ async function ensureTechnologyResults(technology: string, sortFields: YoutubeSo
   const cached = await listCachedYoutubeCoursesByTechnology(technology, 20, sortFields);
   const needsSubscriberRefresh = cached.length > 0 && cached.every((item) => item.channel_subscribers === 0);
 
-  if (cached.length && !needsSubscriberRefresh) {
+  if (cached.length >= 12 && !needsSubscriberRefresh) {
     return {
       source: "cache" as const,
       items: cached
@@ -791,6 +794,10 @@ async function fetchPlaylistDetailsById(playlistId: string, technology?: string 
   }
 
   const lessons = await fetchAllPlaylistLessons(playlist.id);
+  
+  if (lessons.length === 0) {
+    throw new AppError(404, "YOUTUBE_PLAYLIST_EMPTY", "This playlist is unavailable as it contains no playable videos.");
+  }
   const sampledLessons = lessons.slice(0, 10);
   const sampleStats = await fetchVideoStatistics(sampledLessons.map((lesson) => lesson.video_id));
   const sampleTotals = sampledLessons.reduce(

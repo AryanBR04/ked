@@ -3,6 +3,7 @@ interface RankingInput {
   likes: number;
   publishedDate: Date | string;
   now?: Date;
+  validRatio?: number;
 }
 
 export function calculateRecencyScore(publishedDate: Date | string, now = new Date()) {
@@ -22,6 +23,7 @@ export function calculateQualityScore({
   channelSubscribers,
   publishedDate,
   lessonCount,
+  validRatio,
   now = new Date()
 }: {
   views: number;
@@ -29,6 +31,7 @@ export function calculateQualityScore({
   channelSubscribers: number;
   publishedDate: Date | string;
   lessonCount: number;
+  validRatio?: number;
   now?: Date;
 }) {
   const safeViews = Math.max(views, 1);
@@ -43,7 +46,7 @@ export function calculateQualityScore({
                 (recencyScore * 0.1) +
                 (lessonCountScore * 0.05);
 
-  return Number(score.toFixed(6));
+  return Number((score * (validRatio ?? 1)).toFixed(6));
 }
 
 export function calculateYoutubeRankingScore(params: RankingInput) {
@@ -53,7 +56,7 @@ export function calculateYoutubeRankingScore(params: RankingInput) {
 
   // score = (views * 0.5) + (likes * 0.3) + (recentness * 0.2)
   // We use log10 to normalize the massive range of views/likes
-  return Number(
-    ((Math.log10(safeViews) * 0.5) + (Math.log10(safeLikes) * 0.3) + (recencyScore * 0.2)).toFixed(6)
-  );
+  const score = (Math.log10(safeViews) * 0.5) + (Math.log10(safeLikes) * 0.3) + (recencyScore * 0.2);
+  
+  return Number((score * (params.validRatio ?? 1)).toFixed(6));
 }

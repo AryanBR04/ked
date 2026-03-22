@@ -42,18 +42,34 @@ export default function CoursesPage() {
     loadInitialData();
   }, []);
 
-  function runSearch(technology: string) {
+  function toggleSort(value: YoutubeSortKey) {
+    setSelectedSorts((current) => {
+      const next = current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value];
+      
+      // Reactive search if results already exist
+      if (searchResults && searchValue) {
+        runSearch(searchValue, next);
+      }
+      return next;
+    });
+  }
+
+  function runSearch(technology: string, sortsOverride?: YoutubeSortKey[]) {
     const trimmed = technology.trim();
     if (!trimmed) {
       setSearchResults(null);
       return;
     }
 
+    const sortsToUse = sortsOverride || selectedSorts;
+
     startSearchTransition(() => {
       void (async () => {
         try {
           setSearchError(null);
-          const sortQuery = selectedSorts.length ? `&sortBy=${selectedSorts.join(",")}` : "";
+          const sortQuery = sortsToUse.length ? `&sortBy=${sortsToUse.join(",")}` : "";
           const response = await apiFetchMaybeAuth<YoutubeSearchResponse>(
             `/youtube/search?tech=${encodeURIComponent(trimmed)}${sortQuery}`
           );
@@ -64,14 +80,6 @@ export default function CoursesPage() {
         }
       })();
     });
-  }
-
-  function toggleSort(value: YoutubeSortKey) {
-    setSelectedSorts((current) =>
-      current.includes(value)
-        ? current.filter((item) => item !== value)
-        : [...current, value]
-    );
   }
 
   return (

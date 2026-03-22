@@ -1,0 +1,14 @@
+﻿C:\Users\ARYAN\Desktop\ked\frontend\app\page.tsx
+C:\Users\ARYAN\Desktop\ked\frontend\app\auth\login\page.tsx
+C:\Users\ARYAN\Desktop\ked\frontend\app\auth\register\page.tsx
+C:\Users\ARYAN\Desktop\ked\frontend\app\career-tracks\page.tsx
+C:\Users\ARYAN\Desktop\ked\frontend\app\course\youtube\[playlistId]\page.tsx
+C:\Users\ARYAN\Desktop\ked\frontend\app\courses\page.tsx
+C:\Users\ARYAN\Desktop\ked\frontend\app\learning-paths\page.tsx
+C:\Users\ARYAN\Desktop\ked\frontend\app\my-notes\page.tsx
+C:\Users\ARYAN\Desktop\ked\frontend\app\portfolio\page.tsx
+C:\Users\ARYAN\Desktop\ked\frontend\app\profile\page.tsx
+C:\Users\ARYAN\Desktop\ked\frontend\app\projects\page.tsx
+C:\Users\ARYAN\Desktop\ked\frontend\app\projects\[id]\page.tsx
+C:\Users\ARYAN\Desktop\ked\frontend\app\subjects\[subjectId]\page.tsx
+C:\Users\ARYAN\Desktop\ked\frontend\app\subjects\[subjectId]\video\[videoId]\page.tsx

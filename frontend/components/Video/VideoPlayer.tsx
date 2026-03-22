@@ -82,6 +82,13 @@ export function VideoPlayer({
     }
   }
 
+  function handleError(event: YouTubeEvent<any>) {
+    console.error("YouTube Player Error:", event.data);
+    // Error codes for unavailable content: 100, 101, 150
+    // Trigger onCompleted to skip to the next valid video in the list
+    onCompleted();
+  }
+
   return (
     <div className="overflow-hidden rounded-4xl border border-ink/10 bg-white shadow-soft">
       <YouTube
@@ -90,11 +97,12 @@ export function VideoPlayer({
         iframeClassName="h-full w-full"
         onReady={handleReady}
         onStateChange={handleStateChange}
+        onError={handleError}
         opts={{
           width: "100%",
           height: "100%",
           playerVars: {
-            autoplay: 0,
+            autoplay: 1,
             rel: 0,
             start: startPositionSeconds
           }
@@ -103,4 +111,3 @@ export function VideoPlayer({
     </div>
   );
 }
-

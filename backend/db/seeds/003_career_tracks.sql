@@ -10,7 +10,7 @@ INSERT IGNORE INTO career_tracks (id, title, description, difficulty, estimated_
 -- Frontend Developer steps
 INSERT IGNORE INTO career_track_steps (track_id, step_order, step_title, playlist_id) VALUES
 (1, 1, 'HTML Fundamentals', 'PLr6-GrHUlVf_ZNmuQSXdS197Oyr1L9sPB'),
-(1, 2, 'CSS Layout and Flexbox', 'PL4cUxeGkcC9gfoIgnXVzcjmc0z2UksT_E'),
+(1, 2, 'CSS Layout and Flexbox', 'PL4cUxeGkcC9i3FXJSUfmsNOx8E7u6UuhG'),
 (1, 3, 'JavaScript Basics', 'PLsyeobzWxl7qtP8Lo9TReqUMkiOpPBILN'),
 (1, 4, 'React Development', 'PLC3y8-rCajCgKzyA-YqX2o55A9o5-P-gE'),
 (1, 5, 'Build a Portfolio Project', NULL);

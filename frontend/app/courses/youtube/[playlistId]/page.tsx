@@ -263,11 +263,24 @@ function YoutubePlaylistContent({ playlistId }: { playlistId: string }) {
   }
 
   if (!playlist || !selectedLesson) {
+    const isUnavailable = error?.includes("unavailable") || error?.includes("EMTPY") || error?.includes("NOT_FOUND");
+
     return (
-      <ErrorState 
-        message={error ?? "This YouTube playlist could not be loaded."} 
-        onRetry={() => window.location.reload()} 
-      />
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-6">
+        <div className="text-6xl text-ink/20">📺</div>
+        <div className="max-w-md">
+          <h2 className="text-3xl font-semibold text-ink">
+            {isUnavailable ? "Playlist unavailable" : "Connection issue"}
+          </h2>
+          <p className="mt-3 text-ink/60 leading-relaxed">
+            {error ?? "This YouTube playlist is currently unavailable or contains no playable videos. Try another course for now."}
+          </p>
+        </div>
+        <div className="flex gap-4">
+          <Button variant="secondary" onClick={() => window.location.reload()}>Retry</Button>
+          <Button href="/courses">Browse Courses</Button>
+        </div>
+      </div>
     );
   }
 

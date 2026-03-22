@@ -13,6 +13,8 @@ import { youtubeRouter } from "./modules/youtube/youtube.routes";
 import { videoRouter } from "./modules/videos/video.routes";
 import { learningPathsRouter } from "./modules/learning-paths/learning-paths.routes";
 import { careerTracksRouter } from "./modules/career-tracks/career-tracks.routes";
+import { searchYoutubeCoursesController } from "./modules/youtube/youtube.controller";
+import { optionalAuth } from "./middleware/optionalAuthMiddleware";
 import learningRouter from "./modules/learning-stats/learning.routes";
 import { notesRouter } from "./modules/notes/notes.routes";
 import projectsRouter from "./modules/project/project.routes";
@@ -27,15 +29,25 @@ export function createApp() {
   app.use(express.json());
   app.use(requestLogger);
 
+  app.get("/", (req, res) => {
+    res.json({ 
+      message: "Welcome to KED LMS Backend", 
+      api_root: "/api",
+      health_check: "/api/health" 
+    });
+  });
+
+  app.get("/api", (req, res) => {
+    res.json({ message: "KED LMS API is running", version: "0.1.0" });
+  });
+
   app.use("/api/health", healthRouter);
-  app.use("/api/search", (req, res, next) => {
-    // Standardize tech search to /api/youtube/search
-    if (req.query.q) {
-      req.url = "/search";
+  app.get("/api/search", optionalAuth, (req, res, next) => {
+    if (req.query.q && !req.query.tech) {
       req.query.tech = req.query.q;
     }
-    next();
-  }, youtubeRouter);
+    return searchYoutubeCoursesController(req, res, next);
+  });
   app.use("/api/auth", authRouter);
   app.use("/api/subjects", subjectRouter);
   app.use("/api/videos", videoRouter);

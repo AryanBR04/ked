@@ -98,7 +98,7 @@ function MyNotesContent() {
                   {groupTitle}
                 </h2>
                 <Link 
-                  href={`/course/youtube/${playlistId}`}
+                  href={`/courses/youtube/${playlistId}`}
                   className="text-moss text-sm font-bold hover:underline"
                 >
                   Go to Course →
@@ -124,7 +124,7 @@ function MyNotesContent() {
                     <div className="text-[10px] text-ink/30 font-bold uppercase tracking-widest pt-4 border-t border-ink/5 flex justify-between items-center">
                       <span>{new Date(note.created_at).toLocaleDateString()}</span>
                       <Link 
-                        href={`/course/youtube/${playlistId}?lesson=${note.video_index + 1}`}
+                        href={`/courses/youtube/${playlistId}?lesson=${note.video_index + 1}`}
                         className="text-moss hover:text-moss/70 transition-colors"
                       >
                         Launch Player

@@ -21,7 +21,7 @@ INSERT IGNORE INTO learning_path_steps (path_id, step_order, step_title, playlis
 (2, 1, 'HTML & CSS Basics', 'PLr6-GrHUlVf_ZNmuQSXdS197Oyr1L9sPB'),
 (2, 2, 'JavaScript Fundamentals', 'PLsyeobzWxl7qtP8Lo9TReqUMkiOpPBILN'),
 (2, 3, 'React JS for Beginners', 'PLC3y8-rCajCgKzyA-YqX2o55A9o5-P-gE'),
-(2, 4, 'Advanced DOM Manipulation', 'PL4cUxeGkcC9gfoIgnXVzcjmc0z2UksT_E');
+(2, 4, 'CSS Layout and Flexbox', 'PL4cUxeGkcC9i3FXJSUfmsNOx8E7u6UuhG');
 
 -- Data Analyst Path Steps
 INSERT IGNORE INTO learning_path_steps (path_id, step_order, step_title, playlist_id) VALUES
