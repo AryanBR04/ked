@@ -13,5 +13,6 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "api/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "api/**/*.ts"],
+  "exclude": ["src/scripts/**/*.ts"]
 }
