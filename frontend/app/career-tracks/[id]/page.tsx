@@ -109,7 +109,7 @@ export default function CareerTrackDetailsPage() {
                 <div className="flex items-center gap-3">
                   <Button
                     href={step.learning_path_id ? `/learning-paths/${step.learning_path_id}` : `/courses/youtube/${step.playlist_id}`}
-                    variant={step.is_completed ? "secondary" : "ink"}
+                    variant={step.is_completed ? "secondary" : "primary"}
                     className="rounded-full px-10 py-6 text-base"
                   >
                     {step.is_completed ? "Review" : "Start Now"}

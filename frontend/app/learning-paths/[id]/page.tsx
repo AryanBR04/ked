@@ -106,7 +106,7 @@ export default function LearningPathDetailsPage() {
 
                 <Button 
                   href={`/courses/youtube/${step.playlist_id}`} 
-                  variant={step.is_completed ? "secondary" : "ink"}
+                  variant={step.is_completed ? "secondary" : "primary"}
                   className="rounded-full px-8"
                 >
                   {step.is_completed ? "Review Step" : "Begin step"}
